@@ -1,18 +1,27 @@
-import { SignIn, SignInButton, SignOutButton, useUser } from "@clerk/nextjs";
+import { SignInButton, useUser } from "@clerk/nextjs";
 import Head from "next/head";
-import Link from "next/link";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
 
 import { RouterOutputs, api } from "~/utils/api";
 import Image from "next/image";
 import { LoadingPage } from "~/components/Loading";
+import { useState } from "react";
+import Link from "next/link";
 
 dayjs.extend(relativeTime);
 
 const CreatePostWizard = () => {
   const { user } = useUser();
-  console.log(user);
+
+  const ctx = api.useUtils();
+  const { mutate, isLoading: isPosting } = api.posts.create.useMutation({
+    onSuccess: () => {
+      setInput("");
+      ctx.posts.getAll.invalidate();
+    },
+  });
+  const [input, setInput] = useState("");
   if (!user) return null;
 
   return (
@@ -24,7 +33,14 @@ const CreatePostWizard = () => {
         width={56}
         height={56}
       />
-      <input placeholder="Type some emojis!" className="grow bg-transparent" />
+      <input
+        placeholder="Type some emojis!"
+        className="grow bg-transparent"
+        value={input}
+        onChange={(e) => setInput(e.target.value)}
+        disabled={isPosting}
+      />
+      <button onClick={() => mutate({ content: input })}> Post </button>
     </div>
   );
 };
@@ -44,10 +60,14 @@ const PostView = (props: PostWithUser) => {
       />
       <div className="flex flex-col">
         <div className="text-slate-400">
-          <span className="font-bold">{`@${author.username}`}</span> |{" "}
-          <span> {dayjs(post.createdAt).fromNow()} </span>
+          <Link href={`/@${author.username}`}>
+            <span className="font-bold">{`@${author.username}`}</span>
+          </Link>
+          | <span> {dayjs(post.createdAt).fromNow()} </span>
         </div>
-        <span>{post.content} </span>
+        <Link href={`/post/${post.id}`}>
+          <span className="text-2xl">{post.content} </span>
+        </Link>
       </div>
     </div>
   );
